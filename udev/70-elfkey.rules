@@ -1,0 +1,26 @@
+# Grant the logged-in user access to PCsensor configurable devices
+# (ElfKey foot switches, macro keypads) so WebUSB works without root.
+#
+# Must be numbered below 73 so 73-seat-late.rules still sees the tag and runs
+# the uaccess builtin: that rule matches TAG=="uaccess" exactly, so a tag added
+# by a later-numbered file never grants access.
+#
+# Install with scripts/setup-udev.sh (copies to /etc/udev/rules.d/).
+#
+# WebUSB also needs the interface unbound from usbhid while configuring:
+#   sudo sh -c 'echo -n 1-5:1.1 > /sys/bus/usb/drivers/usbhid/unbind'
+
+# PCsensor / ChipShine style VID. uaccess grants the seat owner RW access to
+# the device node each time the device is plugged in or the user logs in.
+SUBSYSTEM=="usb", ATTR{idVendor}=="3553", TAG+="uaccess", MODE="0660"
+
+# Some ElfKey models enumerate under these VIDs instead.
+SUBSYSTEM=="usb", ATTR{idVendor}=="1a86", TAG+="uaccess", MODE="0660"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2329", TAG+="uaccess", MODE="0660"
+SUBSYSTEM=="usb", ATTR{idVendor}=="248a", TAG+="uaccess", MODE="0660"
+
+# hidraw nodes must be accessible too when Chromium falls back to hidraw.
+KERNEL=="hidraw*", ATTRS{idVendor}=="3553", TAG+="uaccess", MODE="0660"
+KERNEL=="hidraw*", ATTRS{idVendor}=="1a86", TAG+="uaccess", MODE="0660"
+KERNEL=="hidraw*", ATTRS{idVendor}=="2329", TAG+="uaccess", MODE="0660"
+KERNEL=="hidraw*", ATTRS{idVendor}=="248a", TAG+="uaccess", MODE="0660"
