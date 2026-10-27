@@ -1,14 +1,13 @@
-# ElfKey Web
+# PCSensor Foot Pedal Configurator
 
-A Linux/web replacement for `SetupElfKey-3.2.1-win-x64.exe`, used to configure
-PCsensor ElfKey foot switches (e.g. `3553:b001 PCsensor FootSwitch`) over USB.
+A WebHID-based configurator for PCsensor foot switches based on their `ElfKey` software.
 
-Built with SvelteKit and WebUSB — no Electron, no native dependencies. Any
-Chromium-based browser can use it from `localhost` or an HTTPS origin.
+This is heavily vibecoded. Built with SvelteKit — no Electron, no native dependencies. Any Chromium-based browser can
+use it from `localhost` or an HTTPS origin.
 
 ## Requirements
 
-- Chrome / Chromium / Edge / Brave (Firefox does not implement WebUSB)
+- Chrome / Chromium / Edge / Brave (Firefox does not implement WebHID)
 - Node.js 20+ for the dev server
 
 ## Quick start
@@ -25,10 +24,8 @@ device afterwards and shown in the panel.
 
 ## Device permissions
 
-WebUSB normally asks polkit for permission every time a device is opened, which
-fails on many Linux setups. The bundled rule
-[`udev/70-elfkey.rules`](udev/70-elfkey.rules) tags PCsensor devices with
-`uaccess`, so the logged-in seat owner gets direct access without a prompt.
+The bundled [`udev/70-elfkey.rules`](udev/70-elfkey.rules) tags PCsensor devices with `uaccess`, so the logged-in seat
+owner gets direct access without a prompt.
 
 `scripts/setup-udev.sh` installs it and replays the `add` events for attached
 devices, so no replug is needed. To check it took effect, the node must carry an
@@ -102,7 +99,7 @@ fastest way to confirm behaviour against real hardware.
 
 Source layout:
 
-- `src/lib/elfkey/transport.ts` — WebUSB interface discovery, read/write, log
+- `src/lib/elfkey/transport.ts` — WebHID interface discovery, read/write, log
 - `src/lib/elfkey/device.ts` — protocol client (`readKey`, `writeKey`)
 - `src/lib/elfkey/codes.ts` — key/character code tables
 - `src/routes/+page.svelte` — UI
