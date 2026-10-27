@@ -100,6 +100,22 @@ describe('reading a key', () => {
 		});
 	});
 
+	it('never reports the out-of-range marker as a key action', async () => {
+		const marker = [0x39, 0xe3, 0x39, 0xe3, 0x39, 0xe3, 0x39, 0xe3];
+		const { device } = await connect([marker, marker]);
+		await expect(device.readKey(1)).rejects.toThrow(/did not return key 1/);
+	});
+
+	it('retries past repeated stale replies and returns the real record', async () => {
+		const marker = [0x39, 0xe3, 0x39, 0xe3, 0x39, 0xe3, 0x39, 0xe3];
+		const { device } = await connect([marker, marker, marker, [0x08, 0x01, 0x04, 0, 0, 0, 0, 0]]);
+		expect(await device.readKey(1)).toEqual({
+			kind: 'keyboard',
+			modifiers: ['AltLeft'],
+			keys: []
+		});
+	});
+
 	it('decodes a text action spanning two reports', async () => {
 		const text = 'Hello, world';
 		const bytes = Array.from(text, (ch) => {

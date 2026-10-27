@@ -23,6 +23,9 @@ const CMD_READ_MODEL = 0x83;
 const CMD_READ_KEY = 0x82;
 const CMD_WRITE_KEY = 0x81;
 
+/** How many times a key record is requested before giving up. */
+const KEY_READ_ATTEMPTS = 5;
+
 /** Device-side action kinds. The low nibble is the function, bit 7 = hold mode. */
 const ACTION = {
 	media: 0x07,
@@ -85,11 +88,7 @@ export class ElfKeyDevice {
 	}
 
 	private async readKeyUnlocked(keyNumber: number): Promise<KeyAction> {
-		this.transport.discard();
-		await this.transport.writeWait([CMD_READ_KEY, 0x08, keyNumber, 0, 0, 0, 0, 0], 30);
-		const header = await this.readResponse(1500);
-		if (!header) throw new DeviceError('Device did not respond while reading the key.');
-		// Layout: [length, kind, values...]. The key number is not echoed.
+		const header = await this.requestKey(keyNumber);
 		const length = header[0];
 		const code = header[1];
 
@@ -218,6 +217,35 @@ export class ElfKeyDevice {
 		await this.transport.drain();
 	}
 
+	/**
+	 * Asks for a key record, retrying when the device answers with something
+	 * that is not a key record. After a burst of queries it repeats its last
+	 * answer a few times before settling, so the first replies are skipped.
+	 */
+	private async requestKey(keyNumber: number): Promise<Bytes> {
+		for (let attempt = 0; attempt < KEY_READ_ATTEMPTS; attempt++) {
+			this.transport.discard();
+			await this.transport.writeWait([CMD_READ_KEY, 0x08, keyNumber, 0, 0, 0, 0, 0], 30);
+			const report = await this.readKeyReply(1200);
+			if (report && isValidKeyReply(report)) return report;
+		}
+		throw new DeviceError(
+			`The device did not return key ${keyNumber}. Replug it and try again.`
+		);
+	}
+
+	/** Waits for a key record, skipping button-press notifications. */
+	private async readKeyReply(timeoutMs: number): Promise<Bytes | null> {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			const report = await this.transport.read(deadline - Date.now());
+			if (!report) return null;
+			if (report[0] === 0x81 && report[1] === 0x55) continue;
+			return report;
+		}
+		return null;
+	}
+
 	/** Collects a response, skipping unsolicited button-press notifications. */
 	private async readResponse(timeoutMs: number): Promise<Bytes | null> {
 		const deadline = Date.now() + timeoutMs;
@@ -271,13 +299,16 @@ async function detectKeyCount(transport: HidTransport, model: string): Promise<n
 		if (!isValidKeyReply(report)) break;
 		count = key;
 	}
+	// The rejected reply is repeated for a moment; let it pass so the next
+	// request does not read it instead of its own answer.
+	await transport.drain();
 	return count || guess || 1;
 }
 
 async function queryKey(transport: HidTransport, keyNumber: number): Promise<Bytes | null> {
 	transport.discard();
 	await transport.writeWait([CMD_READ_KEY, 0x08, keyNumber, 0, 0, 0, 0, 0], 30);
-	const deadline = Date.now() + 400;
+	const deadline = Date.now() + 600;
 	while (Date.now() < deadline) {
 		const report = await transport.read(deadline - Date.now());
 		if (!report) return null;
