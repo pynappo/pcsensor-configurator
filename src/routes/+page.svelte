@@ -133,15 +133,23 @@
 		});
 	}
 
-	async function refreshKey() {
-		if (!device) return;
-		current = await device.readKey(selectedKey);
-		loadForm(current);
+	/**
+	 * Reads `keyNumber` and adopts the result only if it is still the selected
+	 * key, so a slow read cannot overwrite the display after the user moves on.
+	 */
+	async function refreshKey(keyNumber = selectedKey) {
+		const target = device;
+		if (!target) return;
+		const action = await target.readKey(keyNumber);
+		if (keyNumber !== selectedKey) return;
+		current = action;
+		loadForm(action);
 	}
 
 	function selectKey(keyNumber: number) {
 		selectedKey = keyNumber;
-		withBusy(`Reading key ${keyNumber}…`, refreshKey);
+		current = null;
+		withBusy(`Reading key ${keyNumber}…`, () => refreshKey(keyNumber));
 	}
 
 	function buildAction(): KeyAction {
@@ -159,10 +167,13 @@
 
 	async function save() {
 		const target = device;
+		const keyNumber = selectedKey;
 		if (!target) return;
 		await withBusy('Writing to device…', async () => {
-			current = await target.writeKey(selectedKey, buildAction());
-			loadForm(current);
+			const action = await target.writeKey(keyNumber, buildAction());
+			if (keyNumber !== selectedKey) return;
+			current = action;
+			loadForm(action);
 		});
 	}
 
