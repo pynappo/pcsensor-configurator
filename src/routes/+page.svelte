@@ -262,9 +262,10 @@
 						>
 					{/each}
 				</div>
-				{#if current}
-					<p class="muted">Current action: <strong>{describeAction(current)}</strong></p>
-				{/if}
+				<p class="current" class:pending={!current}>
+					Current action:
+					<strong>{current ? describeAction(current) : 'reading…'}</strong>
+				</p>
 			</section>
 
 			<section class="panel">
@@ -404,6 +405,23 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.4rem;
+	}
+	/* Fixed height so switching keys never reflows the panel below. */
+	.current {
+		margin: 0.75rem 0 0;
+		min-height: 1.5rem;
+		font-size: 0.85rem;
+		color: var(--muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.current strong {
+		color: var(--text);
+	}
+	.current.pending strong {
+		font-weight: normal;
+		opacity: 0.6;
 	}
 	.key {
 		width: 2.5rem;
