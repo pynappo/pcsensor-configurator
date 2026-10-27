@@ -22,6 +22,16 @@ describe('keyboard key codes', () => {
 		expect(keyToByte('Left')).toBe(80);
 	});
 
+	it('encodes every F-key including F13 to F24', () => {
+		for (let n = 1; n <= 24; n++) {
+			const byte = keyToByte(`F${n}`);
+			expect(byte, `F${n}`).toBeGreaterThan(0);
+			expect(keyByteToLabel(byte), `F${n}`).toBe(`F${n}`);
+		}
+		expect(keyToByte('F13')).toBe(104);
+		expect(keyToByte('F24')).toBe(115);
+	});
+
 	it('returns 0 for keys the device cannot store', () => {
 		expect(keyToByte('AudioVolumeUp')).toBe(0);
 		expect(keyToByte('Nope')).toBe(0);
